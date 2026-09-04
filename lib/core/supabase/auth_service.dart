@@ -29,11 +29,17 @@ class AuthService extends ChangeNotifier {
     required String name,
     required String email,
     required String password,
+    required String company,
+    required String phone,
   }) async {
     final response = await _client.auth.signUp(
       email: email.trim(),
       password: password,
-      data: {'name': name.trim()},
+      data: {
+        'name': name.trim(),
+        'company': company.trim(),
+        'phone': phone.trim(),
+      },
     );
     notifyListeners();
     return response;

@@ -29,11 +29,13 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   // Register controllers
   final _regNameCtrl     = TextEditingController();
   final _regEmailCtrl    = TextEditingController();
+  final _regCompanyCtrl  = TextEditingController();
+  final _regPhoneCtrl    = TextEditingController();
   final _regPassCtrl     = TextEditingController();
   final _regConfirmCtrl  = TextEditingController();
   final _regFormKey      = GlobalKey<FormState>();
   bool _obscureReg       = true;
-  bool _obscureRegConf   = true;
+  bool _acceptedTerms    = false;
 
   bool _isLoading = false;
 
@@ -54,6 +56,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     _loginPasswordCtrl.dispose();
     _regNameCtrl.dispose();
     _regEmailCtrl.dispose();
+    _regCompanyCtrl.dispose();
+    _regPhoneCtrl.dispose();
     _regPassCtrl.dispose();
     _regConfirmCtrl.dispose();
     super.dispose();
@@ -93,6 +97,15 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   Future<void> _onRegister() async {
     if (!_regFormKey.currentState!.validate()) return;
+    if (!_acceptedTerms) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Aceite os termos de uso para continuar.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
     setState(() => _isLoading = true);
     try {
       final auth = context.read<AuthService>();
@@ -100,6 +113,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         name: _regNameCtrl.text,
         email: _regEmailCtrl.text,
         password: _regPassCtrl.text,
+        company: _regCompanyCtrl.text,
+        phone: _regPhoneCtrl.text,
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -447,13 +462,14 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Nome completo
           _fieldLabel('Nome completo'),
           const SizedBox(height: 6),
           TextFormField(
             controller: _regNameCtrl,
             style: GoogleFonts.inter(color: AppColors.textPrimary, fontSize: 14),
             decoration: const InputDecoration(
-              hintText: 'Seu nome',
+              hintText: 'Seu nome completo',
               prefixIcon: Icon(Icons.person_outline, size: 20),
             ),
             validator: (v) {
@@ -461,8 +477,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               return null;
             },
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
 
+          // E-mail
           _fieldLabel('E-mail'),
           const SizedBox(height: 6),
           TextFormField(
@@ -479,8 +496,44 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               return null;
             },
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
 
+          // Empresa
+          _fieldLabel('Empresa'),
+          const SizedBox(height: 6),
+          TextFormField(
+            controller: _regCompanyCtrl,
+            style: GoogleFonts.inter(color: AppColors.textPrimary, fontSize: 14),
+            decoration: const InputDecoration(
+              hintText: 'Nome da empresa',
+              prefixIcon: Icon(Icons.business_outlined, size: 20),
+            ),
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) return 'Informe a empresa';
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+
+          // Telefone
+          _fieldLabel('Telefone'),
+          const SizedBox(height: 6),
+          TextFormField(
+            controller: _regPhoneCtrl,
+            keyboardType: TextInputType.phone,
+            style: GoogleFonts.inter(color: AppColors.textPrimary, fontSize: 14),
+            decoration: const InputDecoration(
+              hintText: '(00) 00000-0000',
+              prefixIcon: Icon(Icons.phone_outlined, size: 20),
+            ),
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) return 'Informe o telefone';
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+
+          // Senha
           _fieldLabel('Senha'),
           const SizedBox(height: 6),
           TextFormField(
@@ -493,9 +546,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               suffixIcon: IconButton(
                 onPressed: () => setState(() => _obscureReg = !_obscureReg),
                 icon: Icon(
-                  _obscureReg
-                      ? Icons.visibility_outlined
-                      : Icons.visibility_off_outlined,
+                  _obscureReg ? Icons.visibility_outlined : Icons.visibility_off_outlined,
                   size: 20,
                 ),
               ),
@@ -506,36 +557,72 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               return null;
             },
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
 
-          _fieldLabel('Confirmar senha'),
-          const SizedBox(height: 6),
-          TextFormField(
-            controller: _regConfirmCtrl,
-            obscureText: _obscureRegConf,
-            style: GoogleFonts.inter(color: AppColors.textPrimary, fontSize: 14),
-            decoration: InputDecoration(
-              hintText: 'Repita a senha',
-              prefixIcon: const Icon(Icons.lock_outline, size: 20),
-              suffixIcon: IconButton(
-                onPressed: () =>
-                    setState(() => _obscureRegConf = !_obscureRegConf),
-                icon: Icon(
-                  _obscureRegConf
-                      ? Icons.visibility_outlined
-                      : Icons.visibility_off_outlined,
-                  size: 20,
+          // Termos de uso
+          GestureDetector(
+            onTap: () => setState(() => _acceptedTerms = !_acceptedTerms),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: Checkbox(
+                    value: _acceptedTerms,
+                    onChanged: (v) => setState(() => _acceptedTerms = v ?? false),
+                    activeColor: AppColors.red,
+                    side: const BorderSide(color: AppColors.red, width: 1.5),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: RichText(
+                    text: TextSpan(
+                      children: [
+                        TextSpan(
+                          text: 'Aceito os ',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        TextSpan(
+                          text: 'termos de uso',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            color: AppColors.red,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        TextSpan(
+                          text: ' e ',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        TextSpan(
+                          text: 'política de privacidade',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            color: AppColors.red,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
-            validator: (v) {
-              if (v == null || v.isEmpty) return 'Confirme a senha';
-              if (v != _regPassCtrl.text) return 'Senhas não coincidem';
-              return null;
-            },
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
 
+          // Botão CADASTRAR
           SizedBox(
             width: double.infinity,
             height: 52,
@@ -545,8 +632,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   ? const SizedBox(
                       width: 22,
                       height: 22,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2.5, color: Colors.white),
+                      child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
                     )
                   : Text(
                       'CADASTRAR',
@@ -560,6 +646,33 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           ),
           const SizedBox(height: 20),
 
+          // Divisor "ou"
+          Row(
+            children: [
+              const Expanded(child: Divider(color: AppColors.border)),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text('ou', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary)),
+              ),
+              const Expanded(child: Divider(color: AppColors.border)),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          _socialButton(
+            onTap: _isLoading ? null : _onGoogleLogin,
+            icon: _googleIcon(),
+            label: 'Entrar com Google',
+          ),
+          const SizedBox(height: 12),
+          _socialButton(
+            onTap: _isLoading ? null : _onMicrosoftLogin,
+            icon: _microsoftIcon(),
+            label: 'Entrar com Microsoft',
+          ),
+          const SizedBox(height: 24),
+
+          // Link para login
           Center(
             child: GestureDetector(
               onTap: () => _tabController.animateTo(0),
@@ -567,12 +680,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 text: TextSpan(
                   children: [
                     TextSpan(
-                      text: 'Já tem uma conta? ',
-                      style: GoogleFonts.inter(
-                          fontSize: 14, color: AppColors.textPrimary),
+                      text: 'Já possui uma conta? ',
+                      style: GoogleFonts.inter(fontSize: 14, color: AppColors.textSecondary),
                     ),
                     TextSpan(
-                      text: 'Entrar',
+                      text: 'Faça login',
                       style: GoogleFonts.inter(
                         fontSize: 14,
                         color: AppColors.red,
@@ -678,10 +790,6 @@ class _WelcomePage extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(32, 48, 32, 60),
               child: Column(
                 children: [
-                  // ── Logo ────────────────────────────────────────────────
-                  const _ShieldLogo(),
-                  const SizedBox(height: 20),
-
                   // ── Nome ────────────────────────────────────────────────
                   RichText(
                     textAlign: TextAlign.center,
@@ -720,18 +828,39 @@ class _WelcomePage extends StatelessWidget {
                       height: 1.6,
                     ),
                   ),
-                  const SizedBox(height: 36),
+                  // ── Imagem do dispositivo ──────────────────────────────
+                  const SizedBox(height: 50),
 
                   // ── Imagem do dispositivo ──────────────────────────────
-                  SizedBox(
-                    height: 200,
-                    child: Image.asset(
-                      'assets/images/device.jpg',
-                      fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) => const _DevicePlaceholder(),
+                  Transform.scale(
+                    scale: 1.35,
+                    child: SizedBox(
+                      height: 270,
+                      width: double.infinity,
+                      child: ShaderMask(
+                        shaderCallback: (rect) {
+                          return const LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.black,
+                              Colors.transparent,
+                              Colors.transparent,
+                              Colors.black,
+                            ],
+                            stops: [0.0, 0.15, 0.85, 1.0],
+                          ).createShader(rect);
+                        },
+                        blendMode: BlendMode.dstOut,
+                        child: Image.asset(
+                          'assets/images/device.jpg',
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const _DevicePlaceholder(),
+                        ),
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 36),
+                  const SizedBox(height: 50),
 
                   // ── Features ────────────────────────────────────────────
                   const _FeatureItem(
@@ -792,56 +921,6 @@ class _WelcomePage extends StatelessWidget {
   }
 }
 
-// ─── Widget: Escudo ───────────────────────────────────────────────────────────
-class _ShieldLogo extends StatelessWidget {
-  const _ShieldLogo();
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 90,
-      height: 90,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Container(
-            width: 90,
-            height: 90,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.red.withAlpha(80),
-                  blurRadius: 30,
-                  spreadRadius: 4,
-                ),
-              ],
-            ),
-          ),
-          Container(
-            width: 78,
-            height: 78,
-            decoration: const BoxDecoration(
-              gradient: AppColors.accentGradient,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const Icon(Icons.lock_rounded, color: Colors.white, size: 36),
-          Positioned(
-            bottom: 10,
-            left: 10,
-            right: 10,
-            child: CustomPaint(
-              size: const Size(double.infinity, 14),
-              painter: _HeartbeatPainter(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 // ─── Widget: Feature Item ─────────────────────────────────────────────────────
 class _FeatureItem extends StatelessWidget {
   final IconData icon;
@@ -858,17 +937,11 @@ class _FeatureItem extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          width: 38,
-          height: 38,
-          decoration: BoxDecoration(
-            border:
-                Border.all(color: AppColors.red.withAlpha(120), width: 1.5),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(icon, color: AppColors.red, size: 20),
+        Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Icon(icon, color: AppColors.red, size: 28),
         ),
-        const SizedBox(width: 14),
+        const SizedBox(width: 16),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -936,31 +1009,6 @@ class _DevicePlaceholder extends StatelessWidget {
   }
 }
 
-// ─── Painter: Heartbeat ───────────────────────────────────────────────────────
-class _HeartbeatPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withAlpha(180)
-      ..strokeWidth = 1.5
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-    final path = Path();
-    final w = size.width;
-    final mid = size.height / 2;
-    path.moveTo(0, mid);
-    path.lineTo(w * 0.25, mid);
-    path.lineTo(w * 0.35, mid - size.height * 0.8);
-    path.lineTo(w * 0.45, mid + size.height * 0.6);
-    path.lineTo(w * 0.55, mid - size.height * 0.4);
-    path.lineTo(w * 0.65, mid);
-    path.lineTo(w, mid);
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(_HeartbeatPainter old) => false;
-}
 
 // ─── Painter: Google Icon ─────────────────────────────────────────────────────
 class _GoogleIconPainter extends CustomPainter {

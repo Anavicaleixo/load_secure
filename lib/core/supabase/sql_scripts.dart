@@ -9,9 +9,10 @@ abstract class SqlScripts {
 create table public.profiles (
   id          uuid        references auth.users(id) on delete cascade primary key,
   name        text        not null,
+  company     text,
+  phone       text,
   role        text        not null default \'operator\',
   avatar_url  text,
-  phone       text,
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
 );
@@ -31,10 +32,12 @@ create policy "Usuário atualiza seu próprio perfil"
 create or replace function public.handle_new_user()
 returns trigger as \$\$
 begin
-  insert into public.profiles (id, name)
+  insert into public.profiles (id, name, company, phone)
   values (
     new.id,
-    coalesce(new.raw_user_meta_data ->> \'name\', split_part(new.email, \'@\', 1))
+    coalesce(new.raw_user_meta_data ->> \'name\', split_part(new.email, \'@\', 1)),
+    new.raw_user_meta_data ->> \'company\',
+    new.raw_user_meta_data ->> \'phone\'
   );
   return new;
 end;

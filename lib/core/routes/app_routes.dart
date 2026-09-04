@@ -2,6 +2,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../features/onboarding/screens/onboarding_screen.dart';
 import '../../features/auth/screens/forgot_password_screen.dart';
+import '../../features/auth/screens/update_password_screen.dart';
 import '../../features/dashboard/screens/dashboard_screen.dart';
 import '../../features/machines/screens/machines_list_screen.dart';
 import '../../features/machines/screens/machine_detail_screen.dart';
@@ -11,9 +12,10 @@ import '../../features/setup/screens/sql_setup_screen.dart';
 /// Rotas nomeadas da aplicação LoadSecure.
 abstract class AppRoutes {
   // --- Route Paths ---
-  static const String onboarding    = '/';
+  static const String onboarding     = '/';
   static const String forgotPassword = '/forgot-password';
-  static const String dashboard     = '/dashboard';
+  static const String updatePassword = '/update-password';
+  static const String dashboard      = '/dashboard';
   static const String machines      = '/machines';
   static const String machineDetail = '/machines/:id';
   static const String profile       = '/profile';
@@ -24,9 +26,11 @@ abstract class AppRoutes {
     initialLocation: onboarding,
     redirect: (context, state) {
       final session = Supabase.instance.client.auth.currentSession;
-      final isOnboarding = state.matchedLocation == onboarding;
-      // Se logado e tentando acessar onboarding → vai para dashboard
-      if (session != null && isOnboarding) return dashboard;
+      final loc = state.matchedLocation;
+      // Não redirecionar quem está em update-password ou forgot-password
+      if (loc == updatePassword || loc == forgotPassword) return null;
+      // Se logado e na tela de onboarding → vai para dashboard
+      if (session != null && loc == onboarding) return dashboard;
       return null;
     },
     routes: [
@@ -41,6 +45,11 @@ abstract class AppRoutes {
         builder: (context, state) => ForgotPasswordScreen(
           initialEmail: state.extra as String?,
         ),
+      ),
+      GoRoute(
+        path: updatePassword,
+        name: 'updatePassword',
+        builder: (context, state) => const UpdatePasswordScreen(),
       ),
       GoRoute(
         path: dashboard,
