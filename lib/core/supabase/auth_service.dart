@@ -45,28 +45,6 @@ class AuthService extends ChangeNotifier {
     return response;
   }
 
-  // ─── Login com Google (OAuth) ─────────────────────────────────────────────
-  /// Requer configuração do provider Google no painel do Supabase.
-  Future<bool> signInWithGoogle() async {
-    final result = await _client.auth.signInWithOAuth(
-      OAuthProvider.google,
-      redirectTo: kIsWeb ? null : 'io.supabase.loadsecure://login-callback',
-    );
-    notifyListeners();
-    return result;
-  }
-
-  // ─── Login com Microsoft (OAuth) ─────────────────────────────────────────
-  /// Requer configuração do provider Azure no painel do Supabase.
-  Future<bool> signInWithMicrosoft() async {
-    final result = await _client.auth.signInWithOAuth(
-      OAuthProvider.azure,
-      redirectTo: kIsWeb ? null : 'io.supabase.loadsecure://login-callback',
-    );
-    notifyListeners();
-    return result;
-  }
-
   // ─── Recuperação de Senha ─────────────────────────────────────────────────
   Future<void> resetPassword(String email) async {
     await _client.auth.resetPasswordForEmail(

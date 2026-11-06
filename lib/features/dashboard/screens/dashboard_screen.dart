@@ -48,7 +48,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       appBar: _buildAppBar(),
       body: SingleChildScrollView(
         controller: _mainScrollCtrl,
-        padding: const EdgeInsets.fromLTRB(20, 10, 20, 100),
+        padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

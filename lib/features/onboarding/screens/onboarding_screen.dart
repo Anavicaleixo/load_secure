@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/gestures.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/supabase/auth_service.dart';
 import '../../../core/routes/app_routes.dart';
+import '../../../core/constants/legal_terms.dart';
+import '../../../core/utils/file_downloader/file_downloader.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -139,34 +142,273 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     }
   }
 
-  Future<void> _onGoogleLogin() async {
-    setState(() => _isLoading = true);
+  // ─── Termos de Uso e Privacidade (Download e Visualização) ────────────────
+  Future<void> _downloadTermsPdf() async {
     try {
-      await context.read<AuthService>().signInWithGoogle();
-    } catch (e) {
+      final byteData = await rootBundle.load('assets/docs/termos_de_uso_e_politica_de_privacidade.pdf');
+      final bytes = byteData.buffer.asUint8List();
+      final destination = await FileDownloader.downloadBytes(
+        bytes: bytes,
+        filename: 'Termos_e_Privacidade_LoadSecure.pdf',
+        mimeType: 'application/pdf',
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro Google: $e'), backgroundColor: AppColors.error),
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    destination != null
+                        ? 'PDF baixado com sucesso! ($destination)'
+                        : 'Download do PDF iniciado.',
+                    style: GoogleFonts.inter(fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: AppColors.success,
+            duration: const Duration(seconds: 4),
+          ),
         );
       }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+    } catch (_) {
+      // Fallback para TXT caso ocorra algum erro no carregamento do PDF
+      await _downloadTermsTxt();
     }
   }
 
-  Future<void> _onMicrosoftLogin() async {
-    setState(() => _isLoading = true);
+  Future<void> _downloadTermsTxt() async {
     try {
-      await context.read<AuthService>().signInWithMicrosoft();
+      final destination = await FileDownloader.downloadText(
+        text: LegalTerms.fullDocument,
+        filename: 'Termos_e_Privacidade_LoadSecure.txt',
+        mimeType: 'text/plain;charset=utf-8',
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    destination != null
+                        ? 'Documento baixado com sucesso! ($destination)'
+                        : 'Download do documento iniciado.',
+                    style: GoogleFonts.inter(fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: AppColors.success,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro Microsoft: $e'), backgroundColor: AppColors.error),
+          SnackBar(
+            content: Text('Erro ao baixar documento: $e'),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _showTermsModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.85,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (_, scrollController) {
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 44,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.red.withAlpha(25),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.verified_user_outlined,
+                          color: AppColors.red,
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Termos de Uso e Privacidade',
+                              style: GoogleFonts.inter(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                            Text(
+                              'LOADSECURE • Versão Oficial 1.0 (LGPD)',
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: AppColors.textSecondary),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Botões de Download direto
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            _downloadTermsPdf();
+                          },
+                          icon: const Icon(Icons.picture_as_pdf_rounded, size: 18),
+                          label: Text(
+                            'Baixar PDF',
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.red,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            _downloadTermsTxt();
+                          },
+                          icon: const Icon(Icons.download_rounded, size: 18, color: AppColors.textPrimary),
+                          label: Text(
+                            'Baixar TXT',
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: AppColors.border),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Texto dos termos rolável
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.backgroundDark,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.border, width: 1),
+                      ),
+                      child: SingleChildScrollView(
+                        controller: scrollController,
+                        child: Text(
+                          LegalTerms.fullDocument,
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            height: 1.55,
+                            color: Colors.white70,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Botão Aceitar e Fechar
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        setState(() => _acceptedTerms = true);
+                        Navigator.pop(ctx);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.red,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: Text(
+                        'Aceitar Termos e Fechar',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -396,34 +638,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                     ),
             ),
           ),
-          const SizedBox(height: 24),
-
-          // Divisor "ou"
-          Row(
-            children: [
-              const Expanded(child: Divider(color: AppColors.border)),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text('ou',
-                    style: GoogleFonts.inter(
-                        fontSize: 13, color: AppColors.textSecondary)),
-              ),
-              const Expanded(child: Divider(color: AppColors.border)),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          _socialButton(
-            onTap: _isLoading ? null : _onGoogleLogin,
-            icon: _googleIcon(),
-            label: 'Entrar com Google',
-          ),
-          const SizedBox(height: 12),
-          _socialButton(
-            onTap: _isLoading ? null : _onMicrosoftLogin,
-            icon: _microsoftIcon(),
-            label: 'Entrar com Microsoft',
-          ),
           const SizedBox(height: 28),
 
           Center(
@@ -560,65 +774,81 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           const SizedBox(height: 16),
 
           // Termos de uso
-          GestureDetector(
-            onTap: () => setState(() => _acceptedTerms = !_acceptedTerms),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: Checkbox(
-                    value: _acceptedTerms,
-                    onChanged: (v) => setState(() => _acceptedTerms = v ?? false),
-                    activeColor: AppColors.red,
-                    side: const BorderSide(color: AppColors.red, width: 1.5),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(4),
-                    ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: Checkbox(
+                  value: _acceptedTerms,
+                  onChanged: (v) => setState(() => _acceptedTerms = v ?? false),
+                  activeColor: AppColors.red,
+                  side: const BorderSide(color: AppColors.red, width: 1.5),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(4),
                   ),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: RichText(
-                    text: TextSpan(
-                      children: [
-                        TextSpan(
-                          text: 'Aceito os ',
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
-                          ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: RichText(
+                  text: TextSpan(
+                    children: [
+                      TextSpan(
+                        text: 'Aceito os ',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
                         ),
-                        TextSpan(
-                          text: 'termos de uso',
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            color: AppColors.red,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        recognizer: TapGestureRecognizer()
+                          ..onTap = () => setState(() => _acceptedTerms = !_acceptedTerms),
+                      ),
+                      TextSpan(
+                        text: 'termos de uso',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: AppColors.red,
+                          fontWeight: FontWeight.w600,
+                          decoration: TextDecoration.underline,
                         ),
-                        TextSpan(
-                          text: ' e ',
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
-                          ),
+                        recognizer: TapGestureRecognizer()
+                          ..onTap = () => _showTermsModal(context),
+                      ),
+                      TextSpan(
+                        text: ' e ',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
                         ),
-                        TextSpan(
-                          text: 'política de privacidade',
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            color: AppColors.red,
-                            fontWeight: FontWeight.w600,
-                          ),
+                      ),
+                      TextSpan(
+                        text: 'política de privacidade',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: AppColors.red,
+                          fontWeight: FontWeight.w600,
+                          decoration: TextDecoration.underline,
                         ),
-                      ],
-                    ),
+                        recognizer: TapGestureRecognizer()
+                          ..onTap = () => _showTermsModal(context),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+              IconButton(
+                icon: const Icon(
+                  Icons.file_download_outlined,
+                  color: AppColors.red,
+                  size: 20,
+                ),
+                tooltip: 'Baixar documento em PDF',
+                onPressed: _downloadTermsPdf,
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                constraints: const BoxConstraints(),
+              ),
+            ],
           ),
           const SizedBox(height: 24),
 
@@ -643,32 +873,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                       ),
                     ),
             ),
-          ),
-          const SizedBox(height: 20),
-
-          // Divisor "ou"
-          Row(
-            children: [
-              const Expanded(child: Divider(color: AppColors.border)),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text('ou', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary)),
-              ),
-              const Expanded(child: Divider(color: AppColors.border)),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          _socialButton(
-            onTap: _isLoading ? null : _onGoogleLogin,
-            icon: _googleIcon(),
-            label: 'Entrar com Google',
-          ),
-          const SizedBox(height: 12),
-          _socialButton(
-            onTap: _isLoading ? null : _onMicrosoftLogin,
-            icon: _microsoftIcon(),
-            label: 'Entrar com Microsoft',
           ),
           const SizedBox(height: 24),
 
@@ -709,52 +913,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           fontWeight: FontWeight.w500,
           color: AppColors.textPrimary,
         ),
-      );
-
-  Widget _socialButton({
-    required VoidCallback? onTap,
-    required Widget icon,
-    required String label,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        height: 52,
-        decoration: BoxDecoration(
-          color: Colors.transparent,
-          border: Border.all(color: AppColors.border, width: 1),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            icon,
-            const SizedBox(width: 12),
-            Text(
-              label,
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _googleIcon() => SizedBox(
-        width: 22,
-        height: 22,
-        child: CustomPaint(painter: _GoogleIconPainter()),
-      );
-
-  Widget _microsoftIcon() => SizedBox(
-        width: 20,
-        height: 20,
-        child: CustomPaint(painter: _MicrosoftIconPainter()),
       );
 }
 
@@ -1007,57 +1165,4 @@ class _DevicePlaceholder extends StatelessWidget {
       child: const Icon(Icons.devices, color: AppColors.red, size: 64),
     );
   }
-}
-
-
-// ─── Painter: Google Icon ─────────────────────────────────────────────────────
-class _GoogleIconPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final c = Offset(size.width / 2, size.height / 2);
-    final r = size.width / 2;
-    canvas.drawCircle(c, r, Paint()..color = Colors.white);
-    final tp = TextPainter(
-      text: TextSpan(
-        text: 'G',
-        style: TextStyle(
-          color: const Color(0xFF4285F4),
-          fontSize: size.width * 0.72,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    tp.paint(canvas, Offset(c.dx - tp.width / 2, c.dy - tp.height / 2));
-  }
-
-  @override
-  bool shouldRepaint(_GoogleIconPainter old) => false;
-}
-
-// ─── Painter: Microsoft Icon ──────────────────────────────────────────────────
-class _MicrosoftIconPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final half = size.width / 2;
-    final gap = size.width * 0.06;
-    final colors = [
-      const Color(0xFFF25022),
-      const Color(0xFF7FBA00),
-      const Color(0xFF00A4EF),
-      const Color(0xFFFFB900),
-    ];
-    final rects = [
-      Rect.fromLTWH(0, 0, half - gap, half - gap),
-      Rect.fromLTWH(half + gap, 0, half - gap, half - gap),
-      Rect.fromLTWH(0, half + gap, half - gap, half - gap),
-      Rect.fromLTWH(half + gap, half + gap, half - gap, half - gap),
-    ];
-    for (var i = 0; i < 4; i++) {
-      canvas.drawRect(rects[i], Paint()..color = colors[i]);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_MicrosoftIconPainter old) => false;
 }

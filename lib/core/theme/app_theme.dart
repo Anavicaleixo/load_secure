@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
-/// Tema principal LoadSecure — dark mode vermelho/preto industrial.
+
 abstract class AppTheme {
   static ThemeData get darkTheme {
     return ThemeData(
@@ -20,7 +20,7 @@ abstract class AppTheme {
         onError: AppColors.textPrimary,
       ),
 
-      // --- Typography ---
+ 
       textTheme: GoogleFonts.interTextTheme().copyWith(
         displayLarge: GoogleFonts.rajdhani(
           fontSize: 57, fontWeight: FontWeight.w700, color: AppColors.textPrimary,
